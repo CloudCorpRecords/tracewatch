@@ -1,10 +1,10 @@
 # Changelog
 
-## 0.1.2 (2026-10-23)
+## 0.2.1 (2026-10-23)
 
-Production-validation fix (stream 4, problem S4-4): finding
-identity no longer includes the absolute checkout path for imported
-reports.
+Production-validation fix (stream 4, problem S4-4), applied on top
+of 0.2.0: finding identity no longer includes the absolute checkout
+path for imported reports.
 
 - Adapters now normalize finding file paths against the scan root
   the report records about itself (actionpin/hookcheck `path`,
@@ -24,6 +24,22 @@ reports.
   same repo recorded at different absolute roots import to a diff
   with zero added / resolved / changed, and the v5 -> v6 bump
   yields exactly one changed finding and one refEvent.
+- Process note: an earlier commit labeled 0.1.2 was pushed onto
+  0.2.0 during a concurrent-release race from a stale 0.1.1
+  checkout and reverted the 0.2.0 adapter work in the tree (the
+  build caught it). That commit was never published to any
+  surface; this release restores the 0.2.0 content and applies
+  the SW-4 change on top of it.
+
+## 0.2.0 (2026-10-23)
+
+- Adapters for the tranche 2 tools: tracewatch now ingests mcpvet 0.1.1, depguard 0.1.0, and flowcheck 0.1.0 reports alongside hookcheck, actionpin, and injectcheck, in both direct-run ingest and report import. Findings from all six tools flow through diff, list_findings, explain_finding, blame, and repo_health with no special cases.
+- mcpvet: findings normalize from rule, severity (the shared factory scale, critical through info), file, line, evidence, and detail; the evidence is the blame needle and the content signature input.
+- flowcheck: findings normalize from rule, severity, file, line, job, and message; the job joins the finding location so the same rule in two jobs of one workflow versions as two findings.
+- depguard: the structural exception. Its reports have no top-level findings array; findings hang off dependency changes plus a repo-level list. The adapter flattens both, keys each finding to its dependency in the manifest, and preserves the diff context (base ref or path or none, head path, run mode, per-finding change kind and version move) on every finding and on the scan record, so a later diff says what changed against what. A clean dependency change with no findings produces no observation. Blame pickaxes the dependency name in package.json.
+- Direct-run boundary, stated plainly: depguard runs in offline snapshot mode on a bare target (base none); full base/head scans arrive by importing a report produced with --base or --base-path. The README carries the same note.
+- CLI and MCP tool filters now validate tool names against the six known tools instead of silently mistyping an unknown one.
+- Tests: 35 passing (12 new: adapter shape, severity, malformed-entry tolerance, and depguard diff-context tests per new tool, plus one diff scenario per new tool).
 
 ## 0.1.1 (2026-10-22)
 
