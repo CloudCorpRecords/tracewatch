@@ -2,16 +2,17 @@
  * tracewatch types.
  *
  * tracewatch is the Security Wave's memory: it ingests the JSON reports of
- * hookcheck, actionpin, and injectcheck, stores them as timestamped scan
- * records, and tracks every finding across scans under a stable ID so a
- * finding can be diffed, aged, and blamed to the commit that introduced it.
+ * hookcheck, actionpin, injectcheck, mcpvet, depguard, and flowcheck,
+ * stores them as timestamped scan records, and tracks every finding
+ * across scans under a stable ID so a finding can be diffed, aged, and
+ * blamed to the commit that introduced it.
  * Every record here is plain JSON: the store is append-only JSONL files the
  * operator can grep by hand.
  */
 
-export type ToolName = "hookcheck" | "actionpin" | "injectcheck";
+export type ToolName = "hookcheck" | "actionpin" | "injectcheck" | "mcpvet" | "depguard" | "flowcheck";
 
-export const TOOLS: ToolName[] = ["hookcheck", "actionpin", "injectcheck"];
+export const TOOLS: ToolName[] = ["hookcheck", "actionpin", "injectcheck", "mcpvet", "depguard", "flowcheck"];
 
 /** Single severity scale every tool's native scale is mapped onto. */
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
@@ -26,6 +27,14 @@ export interface ToolScanInfo {
   counts: Record<string, number>;
   status: "ok" | "error";
   error?: string;
+  /**
+   * Tool-specific scan context a later diff needs to interpret the
+   * findings. depguard fills this with its diff context: the base the
+   * head was compared against (a git ref, a directory path, or null in
+   * snapshot mode), the head path, and the run mode, so a diff can say
+   * what changed against what instead of presenting bare findings.
+   */
+  context?: Record<string, unknown>;
 }
 
 export interface ScanRecord {

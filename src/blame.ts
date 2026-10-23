@@ -28,6 +28,13 @@ export const GHAPI = process.env.TRACEWATCH_GHAPI ?? `${process.env.HOME ?? ""}/
 function needleFor(obs: FindingObs): string {
   if (obs.tool === "hookcheck") return String(obs.data.command ?? obs.excerpt ?? "");
   if (obs.tool === "actionpin") return String(obs.data.uses ?? obs.excerpt ?? "");
+  // A depguard finding is about a dependency: the dependency name is
+  // literal text in the manifest, so git log -S on the name finds the
+  // commits that touched that dependency line. Repo-level findings
+  // have no dependency; their evidence prose is not file text, so
+  // they honestly establish nothing by pickaxe.
+  if (obs.tool === "depguard") return String(obs.data.dependency ?? "");
+  if (obs.tool === "mcpvet") return collapseWs(String(obs.data.evidence ?? obs.excerpt ?? "")).slice(0, 80);
   return collapseWs(String(obs.data.excerpt ?? obs.excerpt ?? "")).slice(0, 80);
 }
 
@@ -58,7 +65,11 @@ function needleCandidates(obs: FindingObs): string[] {
       ? String(obs.data.command ?? obs.excerpt ?? "")
       : obs.tool === "actionpin"
         ? String(obs.data.uses ?? obs.excerpt ?? "")
-        : String(obs.data.excerpt ?? obs.excerpt ?? "");
+        : obs.tool === "depguard"
+          ? String(obs.data.dependency ?? "")
+          : obs.tool === "mcpvet"
+            ? String(obs.data.evidence ?? obs.excerpt ?? "")
+            : String(obs.data.excerpt ?? obs.excerpt ?? "");
   const lines = new Map<string, void>();
   for (const source of [raw, primary]) {
     for (const line of source.split(/\r?\n/)) {

@@ -39,6 +39,7 @@ import {
   renderScanSummary,
   repoHealth,
   watch,
+  TOOLS,
   type ToolName,
 } from "./core.js";
 
@@ -136,6 +137,11 @@ async function main(): Promise<void> {
       const tools = toolsArg
         ? (toolsArg.split(",").map((s) => s.trim()).filter(Boolean) as ToolName[])
         : undefined;
+      if (tools && tools.some((t) => !TOOLS.includes(t))) {
+        console.error(`error: unknown tool in --tools (known: ${TOOLS.join(", ")})`);
+        process.exitCode = 2;
+        return;
+      }
       const result = await ingestPath(store, target, {
         name: flagValue(rest, "--name"),
         github: flagValue(rest, "--github"),
@@ -152,6 +158,10 @@ async function main(): Promise<void> {
         const eq = spec.indexOf("=");
         if (eq <= 0) usage();
         const tool = spec.slice(0, eq) as ToolName;
+        if (!TOOLS.includes(tool)) {
+          console.error(`error: unknown tool "${spec.slice(0, eq)}" in --report (known: ${TOOLS.join(", ")})`);
+          process.exit(2);
+        }
         const file = spec.slice(eq + 1);
         return { tool, report: JSON.parse(readFileSync(file, "utf8")) as unknown };
       });

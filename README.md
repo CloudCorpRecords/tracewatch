@@ -2,7 +2,7 @@
 
 Observability, tracking, and root-cause for the Security Wave.
 
-The tranche 1 tools (hookcheck, actionpin, injectcheck) answer "what is wrong right now, in this one scan." tracewatch is the wave's memory and stopwatch. It ingests their JSON reports over time and answers the questions an incident actually turns on:
+The Security Wave tools (hookcheck, actionpin, injectcheck, mcpvet, depguard, flowcheck) answer "what is wrong right now, in this one scan." tracewatch is the wave's memory and stopwatch. It ingests their JSON reports over time and answers the questions an incident actually turns on:
 
 - What changed since the last scan? Did a pin silently regress to a mutable tag? Did the ref under an already-pinned action move? That move is the tj-actions shape from March 2025: a tag retargeted under every repo that trusted it, invisible to anyone who only ever ran one scan.
 - Where did this finding come from? tracewatch blames a finding to the commit that introduced it (git pickaxe on the finding's own content) and to the pull request that carried it, and labels every statement confirmed, inferred, or not established.
@@ -22,7 +22,7 @@ docker run -i --rm ghcr.io/cloudcorprecords/tracewatch mcp
 ## Quick start
 
 ```
-# scan a repo with all three tools and start tracking it
+# scan a repo with all six tools and start tracking it
 tracewatch ingest ~/src/myrepo
 
 # what changed since the previous scan?
@@ -116,7 +116,7 @@ The health report carries the verdict trend across every scan, open findings by 
 
 | Tool | What it does |
 | --- | --- |
-| ingest_scan | Run the three tools on a local path and store the scan |
+| ingest_scan | Run the six tools on a local path and store the scan |
 | diff_scans | NEW / RESOLVED / CHANGED, verdict moves, ref events between two scans |
 | finding_provenance | Introducing commit, current-line commit, PR, ref history for one finding |
 | repo_health | Verdict trend, open findings, mean time open, detection latency |
@@ -132,8 +132,14 @@ Exit codes: 0 success or no changes, 1 a diff found changes, 2 usage error or to
 
 ## Honesty rules
 
-- A verdict is a scan result, never a safety claim. tracewatch reports what the three tools found and when; it does not certify a repo clean.
+- A verdict is a scan result, never a safety claim. tracewatch reports what the six tools found and when; it does not certify a repo clean.
 - Time-to-detect is measured against the content's own timestamps and recorded per detection; the report shows the distribution, not a best case.
 - Blame separates confirmed evidence from inference and says "not established" out loud.
 
-MIT. Part of the Security Wave: hookcheck (persistence hooks), actionpin (Actions pinning), injectcheck (prompt injection in agent-read content), tracewatch (observability and root cause).
+## depguard scope note
+
+depguard findings only exist relative to a comparison: a dependency was added, removed, or changed against a base. tracewatch preserves that context end to end. Every depguard finding carries the base (a git ref, a directory path, or none), the head path, the run mode, and its per-finding change kind and version move, and the scan record carries the same context at scan level, so a diff can say what changed against what.
+
+Direct-run ingest (`tracewatch ingest`) runs depguard in its offline snapshot mode against the bare target, which surfaces manifest and lockfile findings (including typosquat suspects) with base recorded as none. A full base/head comparison needs a base the bare target does not name: run depguard with `--base <ref>` or `--base-path <dir>` yourself and import the report (`tracewatch import <repo> --report depguard=<file>`), and the diff context lands in the store with the findings.
+
+MIT. Part of the Security Wave: hookcheck (persistence hooks), actionpin (Actions pinning), injectcheck (prompt injection in agent-read content), mcpvet (MCP server and skill vetting), depguard (dependency change guard), flowcheck (workflow permission hardening), tracewatch (observability and root cause).

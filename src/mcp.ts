@@ -25,11 +25,11 @@ function text(value: unknown): { content: { type: "text"; text: string }[] } {
 
 server.tool(
   "ingest_scan",
-  "Run hookcheck, actionpin, and injectcheck against a local repo path and store the results as a timestamped scan record with stable finding IDs. Returns the scan record and every finding observation. Use this to start or refresh tracking for a repo.",
+  "Run hookcheck, actionpin, injectcheck, mcpvet, depguard, and flowcheck against a local repo path and store the results as a timestamped scan record with stable finding IDs. Returns the scan record and every finding observation. Use this to start or refresh tracking for a repo.",
   {
     path: z.string().describe("Local path of the repo or directory to scan"),
     name: z.string().optional().describe("Repo key to file the scan under (default: GitHub slug from the git remote, else the directory name)"),
-    tools: z.array(z.enum(["hookcheck", "actionpin", "injectcheck"])).optional().describe("Subset of tools to run (default: all three)"),
+    tools: z.array(z.enum(["hookcheck", "actionpin", "injectcheck", "mcpvet", "depguard", "flowcheck"])).optional().describe("Subset of tools to run (default: all six)"),
   },
   async ({ path, name, tools }) => {
     const result = await ingestPath(store, path, { name, tools });
@@ -95,7 +95,7 @@ server.tool(
   "List tracked findings for a repo with derived status. Filter by tool, severity, and status (open, resolved, or all; default open). Each entry carries the stable findingId usable with finding_provenance and explain_finding.",
   {
     repo: z.string().describe("Repo key used at ingest"),
-    tool: z.enum(["hookcheck", "actionpin", "injectcheck"]).optional(),
+    tool: z.enum(["hookcheck", "actionpin", "injectcheck", "mcpvet", "depguard", "flowcheck"]).optional(),
     severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
     status: z.enum(["open", "resolved", "all"]).optional(),
   },

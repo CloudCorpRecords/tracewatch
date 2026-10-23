@@ -1,5 +1,5 @@
 /**
- * Ingest: run the published tranche 1 tools against a target, or import
+ * Ingest: run the published Security Wave tools against a target, or import
  * report files, and store the result as one scan record plus one
  * observation per finding.
  *
@@ -88,6 +88,14 @@ const SCAN_ARGS: Record<ToolName, (target: string) => string[]> = {
   hookcheck: (t) => ["scan", t, "--json"],
   actionpin: (t) => ["audit", t, "--json"],
   injectcheck: (t) => ["scan", t, "--json"],
+  mcpvet: (t) => ["vet", t, "--json"],
+  // depguard direct runs use its offline snapshot mode: the target is
+  // checked on its own (base null), which still surfaces manifest and
+  // lockfile findings. A full base/head comparison needs a base the
+  // bare target does not name, so diff-context scans arrive by import
+  // of a report produced with --base or --base-path (see README).
+  depguard: (t) => ["check", t, "--json", "--offline"],
+  flowcheck: (t) => ["audit", t, "--json"],
 };
 
 export interface ToolRun {
@@ -117,7 +125,7 @@ export async function runTool(tool: ToolName, target: string): Promise<ToolRun> 
   const adapted = adaptReport(tool, parsed, target);
   return {
     tool,
-    info: { version, verdict: adapted.verdict, counts: adapted.counts, status: "ok" },
+    info: { version, verdict: adapted.verdict, counts: adapted.counts, status: "ok", context: adapted.context },
     adapted,
   };
 }
@@ -214,7 +222,7 @@ export function importReports(
   for (const { tool, report } of opts.reports) {
     const adapted = adaptReport(tool, report, root);
     adaptedList.push(adapted);
-    infos[tool] = { version: "imported", verdict: adapted.verdict, counts: adapted.counts, status: "ok" };
+    infos[tool] = { version: "imported", verdict: adapted.verdict, counts: adapted.counts, status: "ok", context: adapted.context };
   }
   return recordScan(store, opts.repo, "import", adaptedList, infos, {
     path: opts.path ? resolve(opts.path) : undefined,

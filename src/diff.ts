@@ -55,6 +55,30 @@ function describeChanges(before: FindingObs, after: FindingObs): string[] {
   if (before.tool === "injectcheck" && after.tool === "injectcheck" && before.excerpt !== after.excerpt) {
     changes.push("matched content changed");
   }
+  if (before.tool === "mcpvet" && after.tool === "mcpvet" && before.excerpt !== after.excerpt) {
+    changes.push("evidence changed");
+  }
+  if (before.tool === "flowcheck" && after.tool === "flowcheck" && before.excerpt !== after.excerpt) {
+    changes.push("finding message changed");
+  }
+  if (before.tool === "depguard" && after.tool === "depguard") {
+    if (before.data.change !== after.data.change) {
+      changes.push(`change: ${String(before.data.change)} -> ${String(after.data.change)}`);
+    }
+    if (before.data.versionFrom !== after.data.versionFrom || before.data.versionTo !== after.data.versionTo) {
+      changes.push(
+        `version: ${String(before.data.versionFrom ?? "")} -> ${String(before.data.versionTo ?? "")} became ${String(after.data.versionFrom ?? "")} -> ${String(after.data.versionTo ?? "")}`,
+      );
+    }
+    if (before.data.rangeFrom !== after.data.rangeFrom || before.data.rangeTo !== after.data.rangeTo) {
+      changes.push(
+        `range: ${String(before.data.rangeFrom ?? "")} -> ${String(before.data.rangeTo ?? "")} became ${String(after.data.rangeFrom ?? "")} -> ${String(after.data.rangeTo ?? "")}`,
+      );
+    }
+    if (before.data.base !== after.data.base) {
+      changes.push(`base: ${String(before.data.base ?? "none")} -> ${String(after.data.base ?? "none")}`);
+    }
+  }
   if (changes.length === 0 && before.findingId !== after.findingId) changes.push("content changed");
   return changes;
 }
