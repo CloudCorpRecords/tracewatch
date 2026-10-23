@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-10-22)
+
+- Blame fix: the introducing-commit pickaxe now falls back, when the finding's full content string finds no commit, to the finding's own lines (longest first), each proven by the same `git log -S` scoped to the finding's file. In 0.1.0 a hookcheck finding on a workflow run step could never be attributed: hookcheck reports the step command dedented, while the committed workflow file indents every line, so the multi-line needle occurred nowhere in the file's history and blame reported the introducing commit as NOT ESTABLISHED even for the commit that added the file. Single-line findings (for example a package.json install hook) are unchanged, and a finding whose lines no commit introduced still reports NOT ESTABLISHED with its reason. Regression tests cover the workflow shape and the honest-miss shape.
+
 ## 0.1.0 (2026-10-22)
 
 First release. tracewatch is the Security Wave's observability, tracking, and root-cause layer over hookcheck, actionpin, and injectcheck.
