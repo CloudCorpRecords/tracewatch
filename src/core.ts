@@ -4,7 +4,7 @@
  * (JSONL persistence and derived status), diff, blame (provenance),
  * report (health), and watch (early detection with time-to-detect).
  */
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 
 export * from "./types.js";
 export * from "./util.js";

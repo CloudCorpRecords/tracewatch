@@ -4,7 +4,10 @@
  * Evidence is labeled, never blended:
  *
  * - CONFIRMED: the introducing commit from `git log -S` (pickaxe) on the
- *   finding's own needle in the local clone; the current-line commit
+ *   finding's own needle in the local clone (for multi-line content
+ *   whose reported form is not literal file text, such as a dedented
+ *   workflow run block, on one of the finding's own lines, proven by
+ *   the same pickaxe scoped to the finding's file); the current-line commit
  *   from `git blame`; PR association from the GitHub API (commits/{sha}/
  *   pulls) through the ghapi helper; ref history and first/last seen
  *   from the tracewatch store itself.
@@ -26,6 +29,48 @@ function needleFor(obs: FindingObs): string {
   if (obs.tool === "hookcheck") return String(obs.data.command ?? obs.excerpt ?? "");
   if (obs.tool === "actionpin") return String(obs.data.uses ?? obs.excerpt ?? "");
   return collapseWs(String(obs.data.excerpt ?? obs.excerpt ?? "")).slice(0, 80);
+}
+
+/**
+ * Pickaxe candidates for a finding, most faithful first.
+ *
+ * The primary needle is the finding's own content string. That string
+ * is not always literal file text: hookcheck reports the command of a
+ * workflow run step dedented, one line per step line, while the file
+ * on disk indents every one of those lines under the step. A multi-line
+ * needle therefore never occurs literally in the committed file, and
+ * `git log -S` on it finds nothing even when one commit plainly added
+ * the whole file. Each individual line of the command, trimmed, does
+ * occur literally (as a substring of the indented file line), so when
+ * the primary needle misses, fall back to the finding's own lines,
+ * longest first because the longest line is the most distinctive.
+ * Every candidate is still proven by the same pickaxe, scoped to the
+ * finding's file, so a hit is the same content proof as before; only
+ * the needle's granularity changes. If no candidate hits, the finding
+ * stays NOT ESTABLISHED.
+ */
+function needleCandidates(obs: FindingObs): string[] {
+  const primary = needleFor(obs);
+  if (!primary) return [];
+  const candidates = [primary];
+  const raw =
+    obs.tool === "hookcheck"
+      ? String(obs.data.command ?? obs.excerpt ?? "")
+      : obs.tool === "actionpin"
+        ? String(obs.data.uses ?? obs.excerpt ?? "")
+        : String(obs.data.excerpt ?? obs.excerpt ?? "");
+  const lines = new Map<string, void>();
+  for (const source of [raw, primary]) {
+    for (const line of source.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (trimmed.length >= 8) lines.set(trimmed);
+    }
+  }
+  const sorted = [...lines.keys()].sort((a, b) => b.length - a.length);
+  for (const line of sorted) {
+    if (!candidates.includes(line)) candidates.push(line);
+  }
+  return candidates;
 }
 
 async function pullsForCommit(slug: string, sha: string): Promise<PullRef[] | null> {
@@ -121,11 +166,18 @@ export async function blameFinding(
   }
   const cwd = resolve(clonePath);
 
-  const needle = needleFor(obs);
-  if (needle) {
-    const commits = await logPickaxe(cwd, needle, obs.file);
-    if (commits.length > 0) {
-      prov.confirmed.introducingCommit = commits[commits.length - 1];
+  const candidates = needleCandidates(obs);
+  if (candidates.length > 0) {
+    let introducing: Provenance["confirmed"]["introducingCommit"];
+    for (const candidate of candidates) {
+      const commits = await logPickaxe(cwd, candidate, obs.file);
+      if (commits.length > 0) {
+        introducing = commits[commits.length - 1];
+        break;
+      }
+    }
+    if (introducing) {
+      prov.confirmed.introducingCommit = introducing;
     } else {
       prov.notEstablished.push(
         `introducing commit not established: git log -S found no commit introducing the needle in ${obs.file} (the content may predate the clone's history or live in an uncommitted state)`,
