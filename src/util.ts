@@ -33,15 +33,42 @@ export function collapseWs(text: string): string {
 }
 
 /**
+ * The scan root a report records about itself: actionpin and
+ * hookcheck reports carry it as `path`, injectcheck as `target`.
+ * Returns "" when the report records no absolute root.
+ */
+export function reportRootOf(report: unknown): string {
+  if (typeof report !== "object" || report === null) return "";
+  const raw = report as Record<string, unknown>;
+  for (const key of ["path", "target"]) {
+    const v = raw[key];
+    if (typeof v === "string" && isAbsolute(v)) return v;
+  }
+  return "";
+}
+
+/**
  * Normalize a file path from a tool report to repo-relative form. Reports
  * may carry absolute paths (actionpin echoes the scanned path); anything
  * under the scan root is relativized, separators become forward slashes.
+ *
+ * SW-4: when no root covers an absolute path (an imported report whose
+ * recorded root was never consulted, a caller root from a different
+ * checkout), fall back to the repo-relative suffix at the
+ * `.github/` anchor: workflows always live at <root>/.github/workflows,
+ * so everything from `.github/` on is the repo-relative path regardless
+ * of where the repo was checked out. Paths with no anchor are left
+ * unchanged rather than guessed at.
  */
 export function normalizePath(p: string, root?: string): string {
   let out = p;
   if (root && isAbsolute(out)) {
     const rel = relative(root, out);
     if (!rel.startsWith("..")) out = rel;
+  }
+  if (isAbsolute(out)) {
+    const anchor = out.split(sep).join("/").match(/(?:^|\/)\.github\/(.*)$/);
+    if (anchor) out = `.github/${anchor[1]}`;
   }
   return out.split(sep).join("/");
 }
